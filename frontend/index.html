@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quik</title>
+  <meta name="description" content="Book a flight in minutes. Add a hotel and an airport driver in the same tap.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <a class="logo" href="./" aria-label="Quik home"><i aria-hidden="true"></i>quik</a>
+    <nav>
+      <button class="ghost" id="openTrips" type="button">My trip</button>
+      <button class="ghost" id="openAgent" type="button">Talk to an agent</button>
+    </nav>
+  </header>
+  <p class="demo-banner" id="demoBanner" hidden>Demo mode: fares, hotels and drivers are sample data and no payment is taken.</p>
+
+  <main>
+    <section class="planner" aria-labelledby="planTitle">
+      <h1 id="planTitle">Where to?</h1>
+      <p class="lede">Local and international flights, with a hotel and a driver to the airport if you want them.</p>
+
+      <button class="voice" id="openVoice" type="button">
+        <span class="orb" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></span>
+        <span><b>Just say it</b><span>"Fly me to Toronto next Friday with a driver"</span></span>
+      </button>
+
+      <form class="plan" id="planForm" autocomplete="off">
+        <div class="route">
+          <div class="ap suggest">
+            <label for="from">From</label>
+            <input id="from" name="from" placeholder="ABV" maxlength="40" required aria-describedby="fromName">
+            <small id="fromName"></small>
+            <ul id="fromList" hidden></ul>
+          </div>
+          <button class="swap" type="button" id="swap" aria-label="Swap from and to">⇄</button>
+          <div class="ap suggest">
+            <label for="to">To</label>
+            <input id="to" name="to" placeholder="LOS" maxlength="40" required aria-describedby="toName">
+            <small id="toName"></small>
+            <ul id="toList" hidden></ul>
+          </div>
+        </div>
+        <button class="near" type="button" id="nearMe">Use my location to find the nearest airport</button>
+
+        <div class="row">
+          <div class="field"><label for="dep">Depart</label><input type="date" id="dep" required></div>
+          <div class="field"><label for="ret">Return (optional)</label><input type="date" id="ret"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="pax">Travellers</label>
+            <select id="pax"><option value="1">1 adult</option><option value="2">2 adults</option><option value="3">3 adults</option><option value="4">4 adults</option></select></div>
+          <div class="field"><label for="cabin">Cabin</label>
+            <select id="cabin"><option value="economy">Economy</option><option value="premium_economy">Premium economy</option><option value="business">Business</option><option value="first">First</option></select></div>
+        </div>
+
+        <fieldset class="bundle" style="border:0;padding:0;margin:16px 0 0">
+          <legend class="sr">What should Quik arrange?</legend>
+          <label><input type="checkbox" checked disabled><span>Flight</span></label>
+          <label><input type="checkbox" id="wantHotel"><span>+ Hotel</span></label>
+          <label><input type="checkbox" id="wantRide"><span>+ Driver</span></label>
+        </fieldset>
+        <button class="primary" id="searchBtn">Find flights</button>
+      </form>
+    </section>
+
+    <section class="stage" id="stage" aria-live="polite">
+      <div class="empty">
+        <h2>Your options will land here</h2>
+        <p>Quik checks every airline we're connected to, then suggests one pick and tells you why. You always decide.</p>
+        <ul>
+          <li>Turn on a fare alert and we'll email you if the price drops</li>
+          <li>Add a driver and they're scheduled to your flight, with contacts shared both ways</li>
+          <li>Your ticket and trip document arrive by email the moment you pay</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <div class="sheet" id="voiceSheet" role="dialog" aria-modal="true" aria-labelledby="voiceTitle">
+    <div class="box">
+      <header><h2 id="voiceTitle">Tell Quik where you're going</h2><button class="close" data-close aria-label="Close">×</button></header>
+      <div class="log" id="voiceLog"></div>
+      <div class="chips" id="voiceChips"></div>
+      <form class="say" id="voiceForm">
+        <label class="sr" for="voiceText">Message</label>
+        <input id="voiceText" placeholder="Type or tap the mic">
+        <button class="mic" type="button" id="micBtn" aria-label="Speak"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="sheet" id="agentSheet" role="dialog" aria-modal="true" aria-labelledby="agentTitle">
+    <div class="box">
+      <header><h2 id="agentTitle">Live agent</h2><button class="close" data-close aria-label="Close">×</button></header>
+      <div class="log" id="agentLog"></div>
+      <form class="say" id="agentForm">
+        <label class="sr" for="agentText">Message</label>
+        <input id="agentText" placeholder="Ask about a booking, baggage, visas…">
+        <button class="secondary" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="sheet" id="tripSheet" role="dialog" aria-modal="true" aria-labelledby="tripTitle">
+    <div class="box">
+      <header><h2 id="tripTitle">Find my trip</h2><button class="close" data-close aria-label="Close">×</button></header>
+      <form id="tripForm" class="grid2">
+        <div class="field"><label for="tripRef">Quik reference</label><input id="tripRef" placeholder="QK7F2A" required></div>
+        <div class="field"><label for="tripEmail">Email used to book</label><input id="tripEmail" type="email" required></div>
+        <button class="primary" style="grid-column:1/-1">Open trip</button>
+        <p class="err" id="tripErr" hidden></p>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

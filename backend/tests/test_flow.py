@@ -1,26 +1,13 @@
 """End-to-end: search -> pick -> book (flight+hotel+ride) -> pay -> ticket -> PDF."""
-import os
 from datetime import date, timedelta
 
-os.environ["DATABASE_URL"] = "sqlite:///./test_quik.db"
-os.environ["PRICE_WATCH_INTERVAL_SECONDS"] = "3600"
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-
-from app.main import app  # noqa: E402
-from app.services.assistant import rule_parse  # noqa: E402
+import pytest
+from app.services.assistant import rule_parse
 
 DEP = date.today() + timedelta(days=21)
 
 
-@pytest.fixture(scope="module")
-def client():
-    if os.path.exists("test_quik.db"):
-        os.remove("test_quik.db")
-    with TestClient(app) as c:
-        yield c
-    os.remove("test_quik.db")
 
 
 def test_nearby_airports(client):

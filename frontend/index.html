@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Quik</title>
-  <meta name="description" content="Book a flight in minutes. Add a hotel and an airport driver in the same tap.">
+  <meta name="description" content="Your booking buddy: flights, trains and restaurants, with hotels and airport drivers in the same tap.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
   <header class="top">
     <a class="logo" href="./" aria-label="Quik home"><i aria-hidden="true"></i>quik</a>
     <nav>
-      <button class="ghost" id="openTrips" type="button">My trip</button>
+      <button class="ghost" id="openTrips" type="button">My bookings</button>
       <button class="ghost" id="openAgent" type="button">Talk to an agent</button>
     </nav>
   </header>
@@ -22,15 +22,20 @@
 
   <main>
     <section class="planner" aria-labelledby="planTitle">
+      <div class="modes" role="tablist" aria-label="What do you want to book?">
+        <button role="tab" id="tabFly" aria-controls="planForm" aria-selected="true" data-mode="fly">Fly</button>
+        <button role="tab" id="tabTrain" aria-controls="trainForm" aria-selected="false" data-mode="train" tabindex="-1">Train</button>
+        <button role="tab" id="tabEat" aria-controls="eatForm" aria-selected="false" data-mode="eat" tabindex="-1">Eat</button>
+      </div>
       <h1 id="planTitle">Where to?</h1>
-      <p class="lede">Local and international flights, with a hotel and a driver to the airport if you want them.</p>
+      <p class="lede" id="planLede">Local and international flights, with a hotel and a driver to the airport if you want them.</p>
 
       <button class="voice" id="openVoice" type="button">
         <span class="orb" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></span>
-        <span><b>Just say it</b><span>"Fly me to Toronto next Friday with a driver"</span></span>
+        <span><b>Just say it</b><span id="voiceHint">"Fly me to Toronto next Friday with a driver"</span></span>
       </button>
 
-      <form class="plan" id="planForm" autocomplete="off">
+      <form class="plan" id="planForm" autocomplete="off" role="tabpanel" aria-labelledby="tabFly">
         <div class="route">
           <div class="ap suggest">
             <label for="from">From</label>
@@ -67,6 +72,42 @@
         </fieldset>
         <button class="primary" id="searchBtn">Find flights</button>
       </form>
+
+      <form class="plan" id="trainForm" autocomplete="off" role="tabpanel" aria-labelledby="tabTrain" hidden>
+        <div class="row" style="margin-top:6px">
+          <div class="field"><label for="tFrom">From</label><select id="tFrom" required></select></div>
+          <div class="field"><label for="tTo">To</label><select id="tTo" required></select></div>
+        </div>
+        <button class="near" type="button" id="tNear">Use my location to find the nearest station</button>
+        <div class="row">
+          <div class="field"><label for="tDate">Date</label><input type="date" id="tDate" required></div>
+          <div class="field"><label for="tPax">Passengers</label>
+            <select id="tPax"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+        </div>
+        <p class="note" id="tLine" style="margin:10px 0 0"></p>
+        <button class="primary" id="tSearchBtn">Find trains</button>
+      </form>
+
+      <form class="plan" id="eatForm" autocomplete="off" role="tabpanel" aria-labelledby="tabEat" hidden>
+        <div class="field" style="margin-top:12px"><label for="eCraving">What are you craving?</label>
+          <input id="eCraving" placeholder="Jollof, suya, something spicy…"></div>
+        <div class="chips" id="eChips">
+          <button type="button">Jollof</button><button type="button">Suya</button><button type="button">Pepper soup</button>
+          <button type="button">Swallow</button><button type="button">Shawarma</button><button type="button">Sushi</button>
+          <button type="button">Pizza</button><button type="button">Steak</button>
+        </div>
+        <div class="row">
+          <div class="field"><label for="eCity">City</label>
+            <select id="eCity"><option>Abuja</option><option>Lagos</option><option>Port Harcourt</option></select></div>
+          <div class="field"><label for="eParty">Guests</label>
+            <select id="eParty"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="eDate">Day</label><input type="date" id="eDate" required></div>
+          <div class="field"><label for="eTime">Time</label><select id="eTime"></select></div>
+        </div>
+        <button class="primary" id="eSearchBtn">Find a table</button>
+      </form>
     </section>
 
     <section class="stage" id="stage" aria-live="polite">
@@ -84,7 +125,7 @@
 
   <div class="sheet" id="voiceSheet" role="dialog" aria-modal="true" aria-labelledby="voiceTitle">
     <div class="box">
-      <header><h2 id="voiceTitle">Tell Quik where you're going</h2><button class="close" data-close aria-label="Close">×</button></header>
+      <header><h2 id="voiceTitle">Ask Quik</h2><button class="close" data-close aria-label="Close">×</button></header>
       <div class="log" id="voiceLog"></div>
       <div class="chips" id="voiceChips"></div>
       <form class="say" id="voiceForm">
@@ -109,7 +150,7 @@
 
   <div class="sheet" id="tripSheet" role="dialog" aria-modal="true" aria-labelledby="tripTitle">
     <div class="box">
-      <header><h2 id="tripTitle">Find my trip</h2><button class="close" data-close aria-label="Close">×</button></header>
+      <header><h2 id="tripTitle">Find my booking</h2><button class="close" data-close aria-label="Close">×</button></header>
       <form id="tripForm" class="grid2">
         <div class="field"><label for="tripRef">Quik reference</label><input id="tripRef" placeholder="QK7F2A" required></div>
         <div class="field"><label for="tripEmail">Email used to book</label><input id="tripEmail" type="email" required></div>
@@ -121,5 +162,7 @@
 
   <div class="toast" id="toast" role="status"></div>
   <script src="app.js"></script>
+  <script src="demo-data.js"></script>
+  <script src="more.js"></script>
 </body>
 </html>

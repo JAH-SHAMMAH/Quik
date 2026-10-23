@@ -12,10 +12,11 @@ from sqlmodel import Session, select
 from ..auth import current_user, optional_user
 from ..config import get_settings
 from ..db import get_session
-from ..models import Booking, BookingStatus, User
+from ..models import Booking, BookingStatus, Reservation, User
 from ..providers.payments import get_payment_provider
-from ..schemas import BookingOut, CreateBooking, PaymentInit
+from ..schemas import BookingOut, CreateBooking, PaymentInit, ReservationOut
 from ..services import bookings as svc
+from ..services import reservations
 from ..services import tickets
 
 log = logging.getLogger("quik.api")
@@ -56,11 +57,15 @@ class Lookup(BaseModel):
 
 @router.post("/bookings/lookup")
 def lookup(body: Lookup, session: Session = Depends(get_session)):
-    """Find a trip by Quik reference + contact email (no account needed)."""
-    b = session.exec(select(Booking).where(Booking.reference == body.reference.upper())).first()
-    if not b or b.contact_email.lower() != body.email.lower():
-        raise HTTPException(404, "Booking not found")
-    return {"booking": BookingOut.model_validate(b, from_attributes=True), "token": trip_token(b.id)}
+    """Find a flight trip, train ticket or table by Quik reference + contact email (no account needed)."""
+    ref = body.reference.upper()
+    b = session.exec(select(Booking).where(Booking.reference == ref)).first()
+    if b and b.contact_email.lower() == body.email.lower():
+        return {"kind": "flight", "booking": BookingOut.model_validate(b, from_attributes=True), "token": trip_token(b.id)}
+    r = session.exec(select(Reservation).where(Reservation.reference == ref)).first()
+    if r and r.contact_email.lower() == body.email.lower():
+        return {"kind": r.kind, "reservation": ReservationOut.model_validate(r, from_attributes=True), "token": trip_token(r.id)}
+    raise HTTPException(404, "Booking not found")
 
 
 @router.get("/bookings/{booking_id}", response_model=BookingOut)
@@ -99,13 +104,27 @@ async def start_payment(booking_id: str, token: str | None = None, session: Sess
                        checkout_url=init.checkout_url, provider=provider.name)
 
 
-async def _settle(pay_ref: str, session: Session) -> Booking | None:
-    b = session.exec(select(Booking).where(Booking.payment_reference == pay_ref)).first()
-    if not b:
+def _payable(pay_ref: str, session: Session) -> Booking | Reservation | None:
+    return (session.exec(select(Booking).where(Booking.payment_reference == pay_ref)).first()
+            or session.exec(select(Reservation).where(Reservation.payment_reference == pay_ref)).first())
+
+
+def _landing(obj: Booking | Reservation) -> str:
+    key = "trip" if isinstance(obj, Booking) else "res"
+    return f"/?{key}={obj.id}&token={trip_token(obj.id)}"
+
+
+async def _settle(pay_ref: str, session: Session) -> Booking | Reservation | None:
+    """Verify a payment with the provider and fulfil whatever it was for (flight trip, train, table)."""
+    obj = _payable(pay_ref, session)
+    if not obj:
         return None
-    if b.status == BookingStatus.pending_payment and await get_payment_provider().verify(pay_ref):
-        b = await svc.fulfil(b, session)
-    return b
+    if obj.status == BookingStatus.pending_payment and await get_payment_provider().verify(pay_ref):
+        if isinstance(obj, Booking):
+            obj = await svc.fulfil(obj, session)
+        else:
+            obj = await reservations.confirm(obj, session)
+    return obj
 
 
 @router.get("/payments/callback")
@@ -114,7 +133,7 @@ async def payment_callback(reference: str, session: Session = Depends(get_sessio
     b = await _settle(reference, session)
     if not b:
         raise HTTPException(404, "Unknown payment")
-    return RedirectResponse(f"/?trip={b.id}&token={trip_token(b.id)}")
+    return RedirectResponse(_landing(b))
 
 
 @router.post("/payments/paystack/webhook", include_in_schema=False)
@@ -132,7 +151,7 @@ async def paystack_webhook(request: Request, session: Session = Depends(get_sess
 def mock_checkout(reference: str, session: Session = Depends(get_session)):
     if get_settings().payment_provider != "mock":
         raise HTTPException(404)
-    b = session.exec(select(Booking).where(Booking.payment_reference == reference)).first()
+    b = _payable(reference, session)
     if not b:
         raise HTTPException(404)
     return f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
@@ -149,7 +168,7 @@ async def mock_complete(reference: str, session: Session = Depends(get_session))
     b = await _settle(reference, session)
     if not b:
         raise HTTPException(404)
-    return RedirectResponse(f"/?trip={b.id}&token={trip_token(b.id)}", status_code=303)
+    return RedirectResponse(_landing(b), status_code=303)
 
 
 @router.post("/webhooks/duffel", include_in_schema=False)

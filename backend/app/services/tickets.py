@@ -155,3 +155,87 @@ def render(b: Booking) -> bytes:
     c.showPage()
     c.save()
     return buf.getvalue()
+
+
+def render_reservation(r) -> bytes:
+    """Train ticket or restaurant confirmation, same visual language as the trip document."""
+    buf = BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    w, h = A4
+    m = 48
+    d = r.details
+    c.setFillColor(INK)
+    c.rect(0, h - 110, w, 110, fill=1, stroke=0)
+    c.setFillColor(BRAND)
+    c.setFont("Helvetica-Bold", 30)
+    c.drawString(m, h - 62, "quik")
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.setFont("Helvetica", 10)
+    c.drawString(m, h - 82, "Train ticket" if r.kind == "train" else "Table reservation")
+    c.setFont("Helvetica-Bold", 11)
+    c.drawRightString(w - m - 90, h - 50, "QUIK REF")
+    c.setFont("Helvetica-Bold", 20)
+    c.drawRightString(w - m - 90, h - 72, r.reference)
+
+    qr = QrCodeWidget(f"QUIK:{r.kind}:{r.reference}:{','.join(d.get('ticket_numbers', []))}")
+    x1, y1, x2, y2 = qr.getBounds()
+    dr = Drawing(76, 76, transform=[76 / (x2 - x1), 0, 0, 76 / (y2 - y1), 0, 0])
+    dr.add(qr)
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.roundRect(w - m - 80, h - 100, 82, 82, 6, fill=1, stroke=0)
+    renderPDF.draw(dr, c, w - m - 77, h - 97)
+
+    y = h - 150
+
+    def line(label, value, bold=False):
+        nonlocal y
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 10)
+        c.drawString(m, y, label)
+        c.setFillColor(INK)
+        c.setFont("Helvetica-Bold" if bold else "Helvetica", 11 if bold else 10)
+        c.drawString(m + 130, y, str(value))
+        y -= 18
+
+    if r.kind == "train":
+        o = d["offer"]
+        dep, arr = _dt(o["departing_at"]), _dt(o["arriving_at"])
+        line("Train", f"{o['train_number']} · {o['line']} line", bold=True)
+        line("From", f"{o['origin']}  {dep:%a %d %b %Y, %H:%M}")
+        line("To", f"{o['destination']}  {arr:%H:%M}")
+        line("Class", d["travel_class"].title())
+        y -= 6
+        for i, p in enumerate(d["passengers"]):
+            tn = (d.get("ticket_numbers") or ["pending"] * len(d["passengers"]))[i]
+            line(f"Passenger {i + 1}", f"{p['full_name']} · seat {d['seats'][i]} · {tn}")
+        y -= 6
+        line("Fare", _money(r.amount, r.currency))
+        line("Booking fee", _money(r.service_fee, r.currency))
+        line("Total paid", _money(r.total_amount, r.currency), bold=True)
+        notes = ["Arrive 30 minutes before departure with a valid ID.", "Show this QR at the gate. One ticket per passenger."]
+    else:
+        v = d["restaurant"]
+        line("Restaurant", v["name"], bold=True)
+        line("Where", f"{v['area']}, {v['city']}")
+        line("When", f"{d['date']} at {d['time']}")
+        line("Guests", d["party_size"])
+        line("Name", r.contact_name)
+        if d["preorder"]:
+            y -= 6
+            for l in d["preorder"]:
+                line(f"{l['qty']}×", f"{l['name']}  ({_money(l['subtotal'], r.currency)})")
+            line("Pre-order", "Paid" if d["preorder_paid"] else "Pay at the restaurant")
+        y -= 6
+        if d["deposit"]:
+            line("Deposit paid", f"{_money(d['deposit'], r.currency)} (taken off your bill)")
+        line("Paid now", _money(r.total_amount, r.currency), bold=True)
+        notes = ["Tables are held for 15 minutes after the booked time.", "Show this reference to the host on arrival."]
+    y -= 20
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica", 8.5)
+    for n in notes:
+        c.drawString(m, y, n)
+        y -= 12
+    c.showPage()
+    c.save()
+    return buf.getvalue()

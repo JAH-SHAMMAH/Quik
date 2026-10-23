@@ -46,7 +46,8 @@ button, input, select { font: inherit; color: inherit; }
 .logo { font: 700 30px/1 var(--display); letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--ink); }
 .logo i { width: 22px; height: 22px; background: var(--amber); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: inline-block; }
 .top nav { display: flex; gap: 6px; }
-.ghost { background: none; border: 1px solid var(--rule); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 15px; }
+.ghost { background: none; border: 1px solid var(--rule); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 15px; white-space: nowrap; }
+@media (max-width: 420px) { .ghost { padding: 6px 10px; font-size: 14px; } .logo { font-size: 26px; } }
 .ghost:hover { border-color: var(--slate); }
 
 main { max-width: 1180px; margin: 0 auto; padding: 0 16px 120px; display: grid; gap: 24px; }
@@ -247,3 +248,62 @@ a.secondary { text-decoration: none; display: inline-block; color: var(--ink); }
 .skeleton { height: 150px; border-radius: var(--r-lg); background: linear-gradient(90deg, var(--card), var(--paper), var(--card)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; margin-bottom: 14px; border: 1px solid var(--rule); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* ---------- modes ---------- */
+.modes { display: inline-flex; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--rule); border-radius: 999px; margin-top: 4px; }
+.modes button { border: 0; background: none; border-radius: 999px; padding: 8px 18px; cursor: pointer; font: 600 16px/1 var(--text); color: var(--slate); }
+.modes button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+form.plan .chips { margin: 10px 0 0; }
+
+/* ---------- trains ---------- */
+.tail.rail { background: #1F6B45; font-size: 11px; width: 36px; }
+.tail.food { background: var(--amber); color: var(--amber-ink); font-size: 16px; }
+.fares { display: grid; gap: 6px; }
+.fare { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: baseline; text-align: left;
+  border: 1px solid var(--rule); background: var(--card); border-radius: var(--r-sm); padding: 8px 10px; cursor: pointer; column-gap: 8px; }
+.fare span { font-weight: 600; }
+.fare b { font: 600 20px/1 var(--display); grid-row: span 2; align-self: center; }
+.fare small { color: var(--slate); font-size: 13px; }
+.fare:hover:not(:disabled) { border-color: var(--ink); }
+.fare:disabled { opacity: .5; cursor: not-allowed; }
+.pass.pick .fare { background: var(--card); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--slate); margin: 12px 0 8px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .seat.demo { width: 18px; height: 18px; pointer-events: none; display: inline-block; }
+.legend .seat.gone { background: var(--rule); opacity: .45; }
+.coach-wrap { overflow-x: auto; padding-bottom: 4px; }
+.coach-map { display: inline-flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 2px solid var(--rule); border-radius: 26px 26px 10px 10px; background: var(--paper); }
+.cab { font-size: 13px; color: var(--slate); text-align: center; padding-bottom: 6px; border-bottom: 1px dashed var(--rule); margin-bottom: 4px; }
+.srow { display: flex; align-items: center; gap: 6px; }
+.rnum { width: 20px; font: 500 13px/1 var(--display); color: var(--slate); text-align: right; font-variant-numeric: tabular-nums; }
+.aisle { width: 18px; }
+.seat { width: 34px; height: 34px; border-radius: 8px 8px 5px 5px; border: 1px solid var(--rule); background: var(--card); cursor: pointer; font: 600 13px/1 var(--display); color: var(--slate); padding: 0; }
+.seat:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.seat.on { background: var(--amber); border-color: var(--amber); color: var(--amber-ink); }
+.seat:disabled { background: var(--rule); color: transparent; cursor: not-allowed; opacity: .45; }
+.tix { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 15px; }
+.tix th { text-align: left; font-weight: 500; color: var(--slate); font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.tix td { padding: 8px 0; border-bottom: 1px dashed var(--rule); font-variant-numeric: tabular-nums; }
+
+/* ---------- restaurants ---------- */
+.dim { opacity: .3; }
+.dishes { display: grid; gap: 4px; margin-top: 12px; padding: 10px 12px; background: var(--amber-soft); border-radius: var(--r-sm); }
+.dishes div { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+.dishes span { color: var(--slate); white-space: nowrap; }
+.slotlbl { font-size: 13px; color: var(--slate); margin-bottom: 6px; }
+.slots { display: flex; flex-wrap: wrap; gap: 6px; }
+.slots button { border: 1px solid var(--rule); background: var(--card); border-radius: 999px; padding: 5px 10px; cursor: pointer; font: 600 15px/1 var(--display); font-variant-numeric: tabular-nums; }
+.slots button.on, .slots button[aria-checked="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.menu { list-style: none; margin: 0; padding: 0; display: grid; }
+.menu li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); }
+.menu li:last-child { border-bottom: 0; }
+.menu li.hit b { color: var(--ink); }
+.menu .grow { flex: 1; min-width: 0; }
+.menu .sub { font-size: 14px; color: var(--slate); }
+.menu .amt { font: 600 18px/1 var(--display); white-space: nowrap; }
+.qty { display: inline-flex; align-items: center; border: 1px solid var(--rule); border-radius: 999px; }
+.qty button { width: 32px; height: 32px; border: 0; background: none; cursor: pointer; font-size: 18px; border-radius: 50%; }
+.qty button:disabled { opacity: .3; cursor: default; }
+.qty output { min-width: 20px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .menu li { flex-wrap: wrap; } .menu .grow { flex-basis: 100%; } .menu .amt { margin-right: auto; } }

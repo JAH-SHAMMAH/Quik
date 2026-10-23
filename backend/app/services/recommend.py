@@ -84,3 +84,61 @@ def service_fee(fare: float, currency: str, flat_ngn: int, percent: float) -> fl
     if currency == "NGN":
         fee += flat_ngn
     return round(fee, 2)
+
+
+# ---------------------------------------------------------------- trains
+
+def rank_trains(offers):
+    if not offers:
+        return offers, None
+    fastest = min(offers, key=lambda o: o.duration_minutes)
+    fastest.tags.append("fastest")
+    with_seats = [o for o in offers if any(f.seats_left for f in o.fares)]
+    best = with_seats[0] if with_seats else offers[0]
+    best.tags.append("quik_pick")
+    std = next(f for f in best.fares if f.travel_class == "standard")
+    reasons = [f"Next train with seats: leaves {best.departing_at:%H:%M}, arrives {best.arriving_at:%H:%M}"]
+    reasons.append(f"{std.seats_left} standard seats left" if std.seats_left else "Standard is full; business and first have seats")
+    if best is fastest:
+        reasons.append("Fastest journey of the day")
+    if best.calls_at:
+        reasons.append(f"Calls at {len(best.calls_at)} station{'s' if len(best.calls_at) > 1 else ''} on the way")
+    return offers, QuikPick(offer_id=best.id, headline=f"{best.train_number} · {best.departing_at:%H:%M}", reasons=reasons)
+
+
+# ---------------------------------------------------------------- restaurants
+
+def rank_restaurants(rs, search):
+    if not rs:
+        return rs, None
+    want = search.time
+
+    def score(r):
+        s = r.rating / 5 * 0.4
+        s += (0.25 if r.matches else 0)
+        s += (0.15 if want in r.slots else 0.08 if r.slots else -0.5)
+        if r.distance_km is not None:
+            s += max(0, 0.15 - r.distance_km / 100)
+        if search.budget:
+            target = {"low": 1, "mid": 2, "high": 3}[search.budget]
+            s -= abs(r.price_level - target) * 0.08
+        s += 0.03 if not r.deposit_per_guest else 0
+        return s
+
+    ranked = sorted(rs, key=score, reverse=True)
+    best = ranked[0]
+    best.tags.append("quik_pick")
+    reasons = []
+    if best.matches:
+        names = [it.name for it in best.menu if it.id in best.matches][:2]
+        reasons.append(f"Serves {' and '.join(names)}")
+    reasons.append(f"Rated {best.rating}/5 by diners")
+    if want in best.slots:
+        reasons.append(f"Table free at {want} for {search.party_size}")
+    elif best.slots:
+        reasons.append(f"Nearest free table: {best.slots[0]}")
+    if best.distance_km is not None:
+        reasons.append(f"{best.distance_km} km away in {best.area}")
+    if not best.deposit_per_guest:
+        reasons.append("No deposit needed")
+    return ranked, QuikPick(offer_id=best.id, headline=f"{best.name} · {best.area}", reasons=reasons[:4])

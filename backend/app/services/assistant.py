@@ -9,7 +9,7 @@ import calendar
 import json
 import logging
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import httpx
 
@@ -194,3 +194,103 @@ def is_yes(text: str) -> bool:
 
 def dumps(session: dict) -> dict:
     return json.loads(json.dumps(session, default=str))
+
+
+# ================================================================ trains & food
+
+TRAIN_WORDS = re.compile(r"\b(train|trains|rail|railway|by rail|station)\b", re.I)
+FOOD_WORDS = re.compile(r"\b(hungry|eat|eating|food|restaurant|restaurants|dinner|lunch|breakfast|brunch|table|"
+                        r"craving|crave|starving|jollof|suya|shawarma|pizza|sushi|burger|pepper ?soup|amala|swallow|"
+                        r"chinese|indian|steak|ramen|asun|nkwobi|grill|grills|dessert|chop)\b", re.I)
+FLIGHT_WORDS = re.compile(r"\b(fly|flight|flights|plane|airport|airline)\b", re.I)
+
+
+def detect_mode(text: str, current: str | None) -> str:
+    if TRAIN_WORDS.search(text):
+        return "train"
+    if FLIGHT_WORDS.search(text):
+        return "flight"
+    if FOOD_WORDS.search(text):
+        return "food"
+    return current or "flight"
+
+
+def _train_city_station(fragment: str) -> str | None:
+    from ..providers import trains
+
+    frag = fragment.lower()
+    for st in sorted(trains.all_stations(), key=lambda s: -len(s.city)):
+        if re.search(rf"\b{re.escape(st.city.lower())}\b", frag) or st.code.lower() == frag.strip():
+            # prefer the main terminus for a city
+            same = trains.stations_in_city(st.city)
+            return same[0].code if same else st.code
+    return None
+
+
+def parse_train(text: str, today: date) -> dict:
+    out: dict = {}
+    if m := re.search(r"\bfrom ([a-zA-Z .'-]+?)(?=\s+(?:to|on|next|this|tomorrow|today|in|for|at|by)\b|[,.?!]|$)", text, re.I):
+        out["origin"] = _train_city_station(m.group(1))
+    if m := re.search(r"\bto ([a-zA-Z .'-]+?)(?=\s+(?:from|on|next|this|tomorrow|today|in|for|at|by)\b|[,.?!]|$)", text, re.I):
+        out["destination"] = _train_city_station(m.group(1))
+    if d := _parse_date(text, today):
+        out["date"] = d
+    if m := re.search(r"\b(\d+|\w+)\s+(?:people|persons|passengers|seats|tickets|of us|adults)\b", text, re.I):
+        n = int(m.group(1)) if m.group(1).isdigit() else NUMBER_WORDS.get(m.group(1).lower())
+        if n:
+            out["passengers"] = n
+    elif re.search(r"\b(me and my|my (wife|husband|partner)|the two of us)\b", text, re.I):
+        out["passengers"] = 2
+    for cls in ("first", "business", "standard"):
+        if re.search(rf"\b{cls}( class)?\b", text, re.I):
+            out["travel_class"] = cls
+            break
+    return {k: v for k, v in out.items() if v is not None}
+
+
+CITIES = ["abuja", "lagos", "port harcourt"]
+AREAS = {"wuse": "Abuja", "maitama": "Abuja", "jabi": "Abuja", "garki": "Abuja", "asokoro": "Abuja", "gwarinpa": "Abuja",
+         "victoria island": "Lagos", "vi": "Lagos", "ikoyi": "Lagos", "lekki": "Lagos", "ikeja": "Lagos"}
+
+
+def _parse_time(text: str) -> str | None:
+    t = text.lower()
+    if m := re.search(r"\b(?:at|by|around|for)?\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", t):
+        h, mi = int(m.group(1)) % 12, int(m.group(2) or 0)
+        h += 12 if m.group(3) == "pm" else 0
+        return f"{h:02d}:{(mi // 30) * 30:02d}"
+    if m := re.search(r"\bat (\d{1,2}):(\d{2})\b", t):
+        return f"{int(m.group(1)):02d}:{(int(m.group(2)) // 30) * 30:02d}"
+    for word, hhmm in (("breakfast", "09:00"), ("brunch", "11:00"), ("lunch", "13:00"), ("dinner", "19:30"), ("tonight", "19:30")):
+        if word in t:
+            return hhmm
+    if re.search(r"\b(now|hungry|starving|asap|right away)\b", t):
+        now = datetime.now() + timedelta(minutes=45)
+        return f"{now.hour:02d}:{30 if now.minute >= 30 else 0:02d}"
+    return None
+
+
+def parse_food(text: str, today: date) -> dict:
+    t = text.lower()
+    out: dict = {"craving": text}
+    for c in CITIES:
+        if c in t:
+            out["city"] = c.title()
+    for area, city in AREAS.items():
+        if re.search(rf"\b{area}\b", t):
+            out["city"] = city
+    if m := re.search(r"\b(?:for|table for|party of)\s+(\d+|\w+)\b", t):
+        n = int(m.group(1)) if m.group(1).isdigit() else NUMBER_WORDS.get(m.group(1))
+        if n:
+            out["party_size"] = n
+    elif re.search(r"\b(me and my|my (wife|husband|partner)|date night|the two of us)\b", t):
+        out["party_size"] = 2
+    if d := _parse_date(text, today):
+        out["date"] = d
+    if tm := _parse_time(text):
+        out["time"] = tm
+    if re.search(r"\b(cheap|cheaper|budget|affordable)\b", t):
+        out["budget"] = "low"
+    elif re.search(r"\b(fancy|fine dining|special|anniversary|upscale)\b", t):
+        out["budget"] = "high"
+    return out

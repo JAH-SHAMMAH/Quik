@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .db import init_db
-from .routers import account, assistant, bookings, catalog
+from .routers import account, assistant, bookings, catalog, reservations
 from .services import price_watch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -29,11 +29,11 @@ async def lifespan(app: FastAPI):
 
 settings = get_settings()
 app = FastAPI(title="Quik API", version="0.1.0", lifespan=lifespan,
-              description="Flights (local + international), hotels, airport rides, payments, fare alerts and a voice assistant.")
+              description="Your booking buddy: flights, trains, restaurants, hotels and airport rides, with payments, alerts and a voice assistant.")
 app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
                    allow_methods=["*"], allow_headers=["*"])
 
-for r in (catalog.router, bookings.router, account.router, assistant.router):
+for r in (catalog.router, bookings.router, reservations.router, account.router, assistant.router):
     app.include_router(r)
 
 

@@ -318,7 +318,8 @@
     e.preventDefault();
     try {
       const r = await api("/api/bookings/lookup", { method: "POST", body: { reference: $("#tripRef").value.trim(), email: $("#tripEmail").value.trim() } });
-      $("#tripSheet").removeAttribute("open"); openTrip(r.booking.id, r.token);
+      $("#tripSheet").removeAttribute("open");
+      if (r.kind && r.kind !== "flight") window.QuikMore.openReservation(r.reservation.id, r.token); else openTrip(r.booking.id, r.token);
     } catch (err) { $("#tripErr").textContent = "No trip matches that reference and email."; $("#tripErr").hidden = false; }
   });
 
@@ -331,7 +332,7 @@
   }
   $("#openVoice").onclick = () => {
     openSheet("voiceSheet");
-    if (!log.children.length) { say("Hi! Where are you flying, and when? Say something like “Lagos to London on 12 December, with a hotel”.", "them"); setChips(["Fly to Canada next Friday", "Abuja to Lagos tomorrow", "Dubai in two weeks for 5 days"]); }
+    if (!log.children.length) { say("Hi! Where are you going, or what are you hungry for? I can book flights, trains and restaurant tables.", "them"); setChips(["Fly to Canada next Friday", "Train to Kaduna tomorrow", "I'm hungry, I want jollof"]); }
   };
   function setChips(list) { chips.innerHTML = list.map((c) => `<button type="button">${h(c)}</button>`).join(""); }
   chips.addEventListener("click", (e) => { if (e.target.tagName === "BUTTON") send(e.target.textContent); });
@@ -344,6 +345,7 @@
     try {
       const r = await api("/api/assistant", { method: "POST", body: { text, session: S.voice, origin_hint: $("#from").value.trim().toUpperCase() || (S.demo ? "ABV" : null) } });
       S.voice = r.session; say(r.reply, "them"); setChips(r.suggestions || []);
+      if (window.QuikMore?.onAssistant(r)) return;
       if (r.results) {
         S.search = r.search; S.results = r.results; S.sort = "best";
         $("#from").value = r.search.origin; $("#to").value = r.search.destination; $("#dep").value = r.search.departure_date;
@@ -466,7 +468,7 @@
           return a.slice(0, params.limit || 10);
         }
         if (path === "/api/flights/search") return search(body);
-        if (path === "/api/assistant") return assistant(body);
+        if (path === "/api/assistant") return window.QuikMore?.demoAssistant(body) || assistant(body);
         if (path === "/api/hotels/search") {
           const nights = Math.max(1, (Date.parse(body.check_out) - Date.parse(body.check_in)) / 864e5), city = ap(body.city_iata).city, ng = ap(body.city_iata).country_code === "NG";
           return ["Palm Court", "Skyline Suites", "The Residency", "Baobab Lodge"].map((n, i) => { const ppn = Math.round((ng ? 32000 : 98000) * (1 + i * .35) / 500) * 500; return { id: `demo_h${i}`, name: `${n} ${city}`, area: ng ? ["Maitama", "Wuse II", "Victoria Island", "GRA"][i] : ["City Centre", "Downtown", "Airport District", "Old Town"][i], stars: 3 + (i % 3), guest_rating: (8 + i * .4).toFixed(1), nights, price_per_night: ppn, total_amount: ppn * nights, currency: "NGN", distance_to_airport_km: 6 + i * 7, free_cancellation: i % 2 === 0 }; });
@@ -502,15 +504,19 @@
         }
         if (m) return bookings[m[1]] || Promise.reject(new Error("Not found"));
         if (path === "/api/price-watches") return { starting_price: Math.min(...Object.values(this._offers).map((o) => o.total_amount)) };
-        if (path === "/api/bookings/lookup") { const b = Object.values(bookings).find((x) => x.reference === body.reference.toUpperCase()); if (!b) throw new Error("Not found"); return { booking: b, token: "demo" }; }
+        if (path === "/api/bookings/lookup") { const b = Object.values(bookings).find((x) => x.reference === body.reference.toUpperCase()); if (!b) return window.QuikMore.demo(path, method, body, params); return { kind: "flight", booking: b, token: "demo" }; }
+        if (window.QuikMore) return window.QuikMore.demo(path, method, body, params);
         throw new Error("Not available in demo");
       },
     };
   })();
 
   /* ------------------------------------------------------------ boot */
+  window.Quik = { $, h, money, hm, day, dur, isoDate, addDays, api, S, stage, toast, openSheet, legHTML, Demo, today };
   detect().then(() => {
     const q = new URLSearchParams(location.search);
     if (q.get("trip") && q.get("token") && !S.demo) openTrip(q.get("trip"), q.get("token"));
+    if (q.get("res") && q.get("token") && !S.demo) window.QuikMore?.openReservation(q.get("res"), q.get("token"));
+    window.QuikMore?.ready();
   });
 })();

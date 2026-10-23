@@ -229,10 +229,181 @@ class AssistantMessage(BaseModel):
     session: dict = Field(default_factory=dict, description="Opaque state returned by the previous turn")
 
 
+
+# ---------- Trains ----------
+
+TrainClass = Literal["standard", "business", "first"]
+
+
+class Station(BaseModel):
+    code: str
+    name: str
+    city: str
+    state: str
+    line: str
+    lat: float
+    lng: float
+    distance_km: float | None = None
+
+
+class TrainSearch(BaseModel):
+    origin: str = Field(description="Station code", examples=["IDU"])
+    destination: str = Field(examples=["RGS"])
+    date: date
+    passengers: int = Field(1, ge=1, le=9)
+
+    @model_validator(mode="after")
+    def _check(self):
+        self.origin, self.destination = self.origin.upper(), self.destination.upper()
+        if self.origin == self.destination:
+            raise ValueError("origin and destination must differ")
+        return self
+
+
+class TrainFare(BaseModel):
+    travel_class: TrainClass
+    amount: float  # per passenger
+    seats_left: int
+
+
+class TrainOffer(BaseModel):
+    id: str
+    provider: str
+    operator: str
+    line: str
+    train_number: str
+    origin: str
+    destination: str
+    departing_at: datetime
+    arriving_at: datetime
+    duration_minutes: int
+    calls_at: list[str]
+    fares: list[TrainFare]
+    currency: str = "NGN"
+    tags: list[str] = []
+
+
+class TrainSearchResult(BaseModel):
+    search: TrainSearch
+    offers: list[TrainOffer]
+    pick: QuikPick | None
+
+
+class Coach(BaseModel):
+    coach: str
+    travel_class: TrainClass
+    layout: str  # e.g. "2+2"
+    rows: int
+    taken: list[str]
+
+
+class SeatMap(BaseModel):
+    offer_id: str
+    coaches: list[Coach]
+
+
+class TrainPassenger(BaseModel):
+    full_name: str = Field(min_length=2)
+    id_number: str | None = None  # NIN/ID if the operator requires it; never persisted
+
+
+class CreateTrainBooking(BaseModel):
+    offer_id: str
+    travel_class: TrainClass
+    seats: list[str] = Field(min_length=1, description="Seat ids from the seat map, e.g. 'C2-07A'")
+    passengers: list[TrainPassenger] = Field(min_length=1)
+    contact_email: EmailStr
+    contact_phone: str
+
+
+# ---------- Restaurants ----------
+
+class MenuItem(BaseModel):
+    id: str
+    name: str
+    description: str
+    price: float
+    tags: list[str]
+
+
+class Restaurant(BaseModel):
+    id: str
+    name: str
+    city: str
+    area: str
+    cuisines: list[str]
+    price_level: int = Field(ge=1, le=3)
+    rating: float
+    lat: float
+    lng: float
+    opens: str
+    closes: str
+    deposit_per_guest: float
+    menu: list[MenuItem]
+    distance_km: float | None = None
+    matches: list[str] = []  # menu item ids that match the craving
+    slots: list[str] = []  # available times for the requested date
+    tags: list[str] = []
+
+
+class RestaurantSearch(BaseModel):
+    craving: str | None = Field(None, examples=["jollof", "suya", "sushi"])
+    city: str | None = Field(None, examples=["Abuja"])
+    lat: float | None = None
+    lng: float | None = None
+    date: date
+    time: str = Field("19:30", pattern=r"^\d{2}:\d{2}$")
+    party_size: int = Field(2, ge=1, le=20)
+    budget: Literal["low", "mid", "high"] | None = None
+
+
+class RestaurantSearchResult(BaseModel):
+    search: RestaurantSearch
+    restaurants: list[Restaurant]
+    pick: QuikPick | None
+
+
+class PreorderLine(BaseModel):
+    item_id: str
+    qty: int = Field(1, ge=1, le=20)
+    note: str | None = None
+
+
+class CreateTableBooking(BaseModel):
+    restaurant_id: str
+    date: date
+    time: str = Field(pattern=r"^\d{2}:\d{2}$")
+    party_size: int = Field(ge=1, le=20)
+    preorder: list[PreorderLine] = []
+    pay_preorder_now: bool = False
+    contact_name: str
+    contact_email: EmailStr
+    contact_phone: str
+    notes: str | None = None
+
+
+class ReservationOut(BaseModel):
+    id: str
+    reference: str
+    kind: str
+    status: str
+    contact_name: str
+    details: dict
+    currency: str
+    amount: float
+    service_fee: float
+    total_amount: float
+    events: list
+    created_at: datetime
+
+
 class AssistantReply(BaseModel):
     reply: str
     intent: str
+    mode: Literal["flight", "train", "food"] = "flight"
     session: dict
     search: FlightSearch | None = None
     results: FlightSearchResult | None = None
+    train_results: TrainSearchResult | None = None
+    restaurant_results: RestaurantSearchResult | None = None
     suggestions: list[str] = []

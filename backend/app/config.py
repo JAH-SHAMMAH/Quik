@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     # Quik's margin on top of the airline fare (the main revenue line).
     service_fee_flat_ngn: int = 3_500
     service_fee_percent: float = 1.5
+    train_booking_fee_ngn: int = 300  # per train booking
+    restaurant_commission_percent: float = 10.0  # charged to partner restaurants, not guests
 
     # Price watch
     price_watch_interval_seconds: int = 60 * 30

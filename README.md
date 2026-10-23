@@ -9,9 +9,9 @@ backend/    FastAPI API (Python 3.11+)
   app/
     providers/   flights (mock + Duffel), trains, restaurants, hotels, rides, payments (mock + Paystack)
     services/    Quik Pick ranking, bookings + reservations, fare alerts, assistant, PDF tickets, email
-  scripts/       build_demo_data.py — regenerates frontend/demo-data.js from the mock providers
     routers/     HTTP + WebSocket endpoints
   tests/         end-to-end: search → pick → book → pay → ticket → PDF
+  scripts/       build_demo_data.py — regenerates frontend/demo-data.js from the mock providers
 frontend/   mobile-first web client (no build step), served by the API
   app.js       flights, voice, agent chat, shared helpers
   more.js      trains (seat maps) and restaurants (menus, pre-order)

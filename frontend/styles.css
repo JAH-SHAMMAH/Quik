@@ -170,7 +170,9 @@ form.plan { background: var(--card); border-radius: var(--r-lg); padding: 6px 16
 .reasons li::before { content: "✓"; position: absolute; left: 0; color: var(--go); font-weight: 700; }
 
 .watch { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--r-sm); background: var(--card); border: 1px solid var(--rule); margin: 4px 0 18px; font-size: 15px; }
-.watch button { margin-left: auto; }
+.watch { flex-wrap: wrap; }
+.watch label { flex: 1 1 260px; }
+.watch input { flex: 1 1 180px; min-width: 0; border: 1px solid var(--rule); border-radius: var(--r-sm); padding: 9px 10px; background: var(--card); }
 
 /* ---------- steps (extras/passengers/pay) ---------- */
 .panel { background: var(--card); border: 1px solid var(--rule); border-radius: var(--r-lg); padding: 18px; margin-bottom: 14px; }

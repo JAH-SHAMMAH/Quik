@@ -146,7 +146,7 @@
         </div>
       </div>
       ${passHTML(pickOffer, pick)}
-      <div class="watch"><span>Prices on this route move. Want an email if it drops?</span><button class="secondary" type="button" id="watchBtn">Track this fare</button></div>
+      <form class="watch" id="watchForm"><label for="watchEmail">Prices on this route move. Get an email if it drops:</label><input id="watchEmail" type="email" required placeholder="you@email.com"><button class="secondary" id="watchBtn">Track this fare</button></form>
       ${rest.map((o) => passHTML(o)).join("")}`;
   }
 
@@ -155,12 +155,11 @@
     if (sort) { S.sort = sort.dataset.sort; renderResults(); return; }
     const ch = e.target.closest("[data-choose]");
     if (ch) { chooseOffer(ch.dataset.choose); return; }
-    if (e.target.id === "watchBtn") trackFare(e.target);
   });
+  stage.addEventListener("submit", (e) => { if (e.target.id === "watchForm") { e.preventDefault(); trackFare($("#watchBtn")); } });
 
   async function trackFare(btn) {
-    const email = prompt("Email for fare alerts");
-    if (!email) return;
+    const email = $("#watchEmail").value.trim();
     try {
       const w = await api("/api/price-watches", { method: "POST", body: { email, search: S.search } });
       btn.textContent = "Tracking"; btn.disabled = true;
